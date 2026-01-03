@@ -1,44 +1,40 @@
 import streamlit as st
-from openai import OpenAI
+import requests
+from PIL import Image
+from io import BytesIO
 
 # Page Config
 st.set_page_config(page_title="Student Image Lab", page_icon="🎓", layout="wide")
 
-# 1. Hidden Secrets & Setup
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-FIXED_MODEL = st.secrets["AI_MODEL"]
+# 1. API Configuration
+CLIPDROP_API_URL = "https://clipdrop-api.co/text-to-image/v1"
+API_KEY = st.secrets["CLIPDROP_API_KEY"]
 
 # 2. Sidebar for Subjects
 with st.sidebar:
     st.title("📚 Study Room")
-    st.info("Select your subject to help the AI understand the context.")
-    
     subject = st.selectbox(
         "What are we studying?",
         ["General", "Math", "Literature", "Geography", "Physics", "Biology", "History"]
     )
-    
-    st.write("---")
-    st.caption("This tool helps visualize complex concepts. Type your prompt in the chat to begin.")
+    st.divider()
+    st.info("Clipdrop is now powering our visuals!")
 
-# 3. Prompt Engineering Logic (Hidden from student)
+# 3. Subject-Specific Modifiers
 subject_modifiers = {
     "General": "",
-    "Math": "mathematical visualization, geometric perfection, clean white background, 2D vector style, ",
-    "Literature": "evocative storytelling style, classic book illustration, atmospheric lighting, ",
-    "Geography": "topographic map style, realistic satellite view, detailed earth features, ",
-    "Physics": "scientific diagram, labeled parts, realistic physics simulation frame, ",
-    "Biology": "microscopic detail, anatomical accuracy, textbook illustration style, ",
-    "History": "authentic historical style, vintage photograph or classical oil painting style, "
+    "Math": "mathematical visualization, geometric perfection, clean, 2d, ",
+    "Literature": "classic book illustration, oil painting style, atmospheric, ",
+    "Geography": "topographic satellite view, realistic map, high detail, ",
+    "Physics": "scientific physics diagram, labeled parts, high resolution, ",
+    "Biology": "microscopic biological detail, textbook illustration, anatomical, ",
+    "History": "authentic historical style, vintage photograph, classic painting, "
 }
 
-# 4. Chat Interface Logic
-st.title(f"🎨 {subject} Visualization Lab")
-
+# 4. Chat UI Initialization
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display History
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         if message["type"] == "text":
@@ -46,33 +42,40 @@ for message in st.session_state.messages:
         else:
             st.image(message["content"])
 
-# Chat Input
+# 5. Handle Chat Input
 if raw_prompt := st.chat_input(f"Describe a {subject} concept..."):
-    # Show the student's prompt in chat
+    # Show user prompt
     st.session_state.messages.append({"role": "user", "type": "text", "content": raw_prompt})
     with st.chat_message("user"):
         st.markdown(raw_prompt)
 
-    # Enhance prompt based on subject
+    # Enhance prompt
     enhanced_prompt = f"{subject_modifiers[subject]}{raw_prompt}"
 
     with st.chat_message("assistant"):
-        with st.spinner(f"Creating your {subject} illustration..."):
+        with st.spinner(f"Clipdrop is sketching your {subject} aid..."):
             try:
-                response = client.images.generate(
-                    model=FIXED_MODEL,
-                    prompt=enhanced_prompt,
-                    n=1,
-                    size="1024x1024"
+                # CLIPDROP API CALL
+                # Note: Clipdrop expects 'multipart/form-data'
+                response = requests.post(
+                    CLIPDROP_API_URL,
+                    headers={"x-api-key": API_KEY},
+                    files={"prompt": (None, enhanced_prompt, "text/plain")}
                 )
-                image_url = response.data[0].url
-                
-                # Display and Save
-                st.image(image_url, caption=f"Visual aid for: {raw_prompt}")
-                st.session_state.messages.append({
-                    "role": "assistant", 
-                    "type": "image", 
-                    "content": image_url
-                })
+
+                if response.ok:
+                    # Convert bytes to Image
+                    img = Image.open(BytesIO(response.content))
+                    st.image(img, caption=f"Visual: {raw_prompt}")
+                    
+                    # Save to session history
+                    st.session_state.messages.append({
+                        "role": "assistant", 
+                        "type": "image", 
+                        "content": img
+                    })
+                else:
+                    st.error(f"Clipdrop Error ({response.status_code}): {response.text}")
+
             except Exception as e:
-                st.error("The AI is resting right now. Please try again in a moment!")
+                st.error(f"A technical error occurred: {e}")

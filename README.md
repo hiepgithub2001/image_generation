@@ -1,45 +1,33 @@
-Here is a professional `README.md` for your project. It includes setup instructions, a feature list, and clear guidance on how to use the application.
+This `README.md` is designed to help your students get set up and provides a clear "bypass" guide for when they hit the 100-credit free limit on Clipdrop.
 
 ---
 
-# 🎨 AI Image Generation Chatroom
+# 🎓 Student Image Visualization Lab
 
-A sleek, modern **Streamlit** web application that transforms text prompts into high-quality images using OpenAI's DALL-E models. Featuring a native chat-style interface, it allows for a seamless creative flow where users can view their prompt history and generated artwork in a single conversation thread.
+A dedicated Streamlit application designed for students to visualize complex concepts in **Math, Science, History, and Literature**. Powered by the **Clipdrop API**, this tool transforms descriptive prompts into high-quality educational diagrams and illustrations.
 
----
 
-## ✨ Features
+## 🚀 Quick Start
 
-* **Chat-Based UX:** Familiar messaging interface using `st.chat_message` and `st.chat_input`.
-* **Persistent Session:** Your session state keeps track of the conversation, so images don't disappear when you send a new prompt.
-* **Model Selection:** Choose between **DALL-E 3** (High quality/Detail) and **DALL-E 2** (Faster/Classic).
-* **Secure API Handling:** Input your OpenAI API key directly through the sidebar; it is never hardcoded.
-* **Responsive Design:** Works on desktops, tablets, and mobile browsers.
+### 1. Installation
 
----
-
-## 🚀 Getting Started
-
-### 1. Clone the Repository
+Ensure you have Python installed, then run:
 
 ```bash
-git clone https://github.com/hiepgithub2001/image_generation.git
-cd image_generation
+bash run.sh
 
 ```
 
-### 2. Install Dependencies
+### 2. Configure Secrets
 
-Ensure you have Python 3.8+ installed. Install the required libraries via pip:
+Create a file at `.streamlit/secrets.toml` and add your API key:
 
-```bash
-pip install streamlit openai
+```toml
+CLIPDROP_API_KEY = "your_clipdrop_api_key_here"
 
 ```
 
-### 3. Run the Application
-
-Start the Streamlit server:
+### 3. Run the App
 
 ```bash
 streamlit run app.py
@@ -48,37 +36,53 @@ streamlit run app.py
 
 ---
 
-## 🛠️ Usage
+## 📚 Subject-Specific Features
 
-1. **Launch the App:** Once running, your browser should open to `http://localhost:8501`.
-2. **Enter API Key:** Expand the sidebar on the left and paste your **OpenAI API Key**.
-> *Note: Your key is only stored in the local session and is not saved to any database.*
+The app includes a sidebar to select your study topic. Each topic automatically applies a "hidden" style to ensure the AI creates educational content:
 
-
-3. **Select Model:** Choose `dall-e-3` for the best results.
-4. **Start Chatting:** Type a descriptive prompt in the chat box at the bottom (e.g., *"A cyberpunk samurai cat in a rain-slicked Tokyo alleyway"*).
-5. **Wait for Generation:** The "Assistant" will show a loading spinner while the AI brushes your canvas.
+* **Physics/Biology:** Focuses on textbook-style accuracy and labeling.
+* **Math:** Prioritizes clean, geometric, and 2D vector styles.
+* **Literature:** Uses evocative, storytelling-focused oil painting styles.
 
 ---
 
-## 📦 Project Structure
+## ⚠️ Reached the Image Limit? (Free Tier Guide)
 
-```text
-.
-├── app.py              # Main Streamlit application code
-├── requirements.txt    # List of Python dependencies
-└── README.md           # Project documentation
+GUIDELINE VIDEO: https://www.youtube.com/watch?v=71yKQoC_zKo
 
-```
+Clipdrop provides **100 free credits** per account. If you see a "Quota Exceeded" error, follow these steps to generate a new API key for free:
+
+### Step 1: Get a Temporary Phone Number
+
+Since Clipdrop requires phone verification for a new account, use a disposable number service to keep your private number safe.
+
+1. Go to **[Temp-Number.com](https://temp-number.com/)**.
+2. Select a country (e.g., USA or UK) and look for an active number.
+3. Keep this tab open; you will need to come back here to read the incoming SMS code.
+
+### Step 2: Sign Up for a New Clipdrop Account
+
+1. Open an Incognito/Private browser window.
+2. Go to the **[Clipdrop API Signup](https://clipdrop.co/apis/docs/cleanup)**.
+3. Register with a new email address (you can use a temporary email if needed).
+4. When asked for a phone number, enter the number you found on **Temp-Number.com**.
+
+### Step 3: Verify and Retrieve Key
+
+1. Click "Send Code" on Clipdrop.
+2. Switch back to the **Temp-Number.com** page and refresh it until you see the SMS from Clipdrop.
+3. Enter the code into Clipdrop to verify.
+4. Once logged in, go to your **Account Settings** to copy your new **API Key**.
+5. Update your `.streamlit/secrets.toml` file with this new key.
 
 ---
 
-## 📝 Tips for Best Results
+## 🛠️ Troubleshooting
 
-* **Be Descriptive:** Instead of "a dog," try "a golden retriever wearing a space suit on Mars, digital art style."
-* **Specify Style:** Mention artists or styles like "Oil painting," "Unreal Engine 5 render," or "Minimalist vector art."
-* **DALL-E 3:** Use DALL-E 3 for complex prompts involving specific text or intricate detail.
+* **429 Error:** You have sent too many requests too quickly. Wait 60 seconds.
+* **401 Error:** Your API key is invalid or has run out of credits. Follow the "Free Tier Guide" above.
+* **No Image Found:** Ensure your prompt is descriptive. Clipdrop works best when you describe colors, styles, and specific objects.
 
 ---
 
-**Would you like me to add a section to this README explaining how to deploy this to the web for free using Streamlit Cloud?**
+**Would you like me to add a script that automatically checks if your API key still has credits remaining?**
