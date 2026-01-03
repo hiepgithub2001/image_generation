@@ -2,3 +2,5 @@ streamlit
 openai
 google-genai
 deep-translator
+requests
+Pillow
