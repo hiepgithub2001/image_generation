@@ -11,13 +11,13 @@ st.set_page_config(page_title="Student Image Lab", page_icon="🎓", layout="wid
 with st.sidebar:
     st.title("⚙️ App Settings")
     
-    # User Input for API Key
-    default_key = "50f2b15a199dc34afc59ac2b15515b93cda5a28ea269cbf597d3cdb3bca1242e35a9ff7782fe4e63782127626d78666a"
-    api_key = st.text_input(
-        "Clipdrop API Key", 
-        value=default_key, 
+    # User Input for API Key / Token
+    default_token = "12345678"
+    api_token = st.text_input(
+        "Worker Authorization Token", 
+        value=default_token, 
         type="password",
-        help="Paste your new API key here if the default one runs out of credits."
+        help="Enter the Bearer Token for the image generation worker."
     )
     
     st.divider()
@@ -66,44 +66,48 @@ for message in st.session_state.messages:
 input_label = "Describe a concept..." if lang_choice == "English" else "Mô tả một khái niệm..."
 
 if raw_prompt := st.chat_input(input_label):
-    # Display the original message in the chat
     st.session_state.messages.append({"role": "user", "type": "text", "content": raw_prompt})
     with st.chat_message("user"):
         st.markdown(raw_prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner("Translating and Visualizing..." if lang_choice == "English" else "Đang dịch và tạo hình ảnh..."):
+        with st.spinner("Generating image (this takes ~30s)..." if lang_choice == "English" else "Đang tạo hình ảnh (mất khoảng 30 giây)..."):
             try:
-                # STEP A: Handle Translation if Vietnamese is selected
+                # STEP A: Handle Translation
                 if lang_choice == "Tiếng Việt":
                     english_prompt = GoogleTranslator(source='vi', target='en').translate(raw_prompt)
-                    st.caption(f"Translated: {english_prompt}") # Show the student the translation
+                    st.caption(f"Translated: {english_prompt}")
                 else:
                     english_prompt = raw_prompt
 
-                # STEP B: Apply modifiers and call Clipdrop
+                # STEP B: Apply modifiers
                 enhanced_prompt = f"{subject_modifiers[subject]}{english_prompt}"
 
-                response = requests.post(
-                    "https://clipdrop-api.co/text-to-image/v1",
-                    headers={"x-api-key": api_key},
-                    files={"prompt": (None, enhanced_prompt, "text/plain")}
-                )
+                # STEP C: Call New Worker API
+                url = "https://image-api.hiep622032001.workers.dev"
+                headers = {
+                    "Authorization": f"Bearer {api_token}",
+                    "Content-Type": "application/json"
+                }
+                payload = {"prompt": enhanced_prompt}
+
+                # Using a 60s timeout since generation takes 30s
+                response = requests.post(url, headers=headers, json=payload, timeout=60)
 
                 if response.ok:
                     img = Image.open(BytesIO(response.content))
-                    st.image(img, caption=f"Aid for: {raw_prompt}")
+                    st.image(img, caption=f"Result for: {raw_prompt}")
                     st.session_state.messages.append({
                         "role": "assistant", 
                         "type": "image", 
                         "content": img
                     })
                 elif response.status_code == 401:
-                    st.error("API Key is invalid. / Mã API không hợp lệ.")
-                elif response.status_code == 429:
-                    st.warning("Limit reached! / Đã hết giới hạn tạo ảnh.")
+                    st.error("Unauthorized: Please check your Bearer Token.")
                 else:
-                    st.error(f"Error {response.status_code}")
+                    st.error(f"Error {response.status_code}: {response.text}")
 
+            except requests.exceptions.Timeout:
+                st.error("The request timed out. The server took too long to respond.")
             except Exception as e:
                 st.error(f"Error: {e}")
