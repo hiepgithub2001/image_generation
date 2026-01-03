@@ -1,82 +1,128 @@
 # 🎓 Student Image Visualization Lab
 
-A dedicated local and cloud-based tool designed for students to visualize complex concepts in **Math, Science, History, and Literature**. Powered by the **Clipdrop API**, this tool transforms descriptive prompts into high-quality educational diagrams and illustrations.
+A dedicated local and cloud-based tool designed for students to visualize complex concepts in **Math, Science, History, and Literature**. This project utilizes a custom **Cloudflare Worker** as a proxy to run high-performance AI models.
 
-## 🌟 New Feature: Bilingual Support (English & Tiếng Việt)
+## 🌟 Key Features
 
-The app now supports **Vietnamese**. Students can type their prompts in Vietnamese, and the app will automatically:
-
-1. Translate the prompt to English using the Google Translate API.
-2. Apply the relevant subject style modifiers.
-3. Generate the image via Clipdrop.
-*To use this, simply change the language setting in the sidebar.*
+* **Bilingual Support:** Integrated translation for English and Vietnamese prompts.
+* **Subject-Specific Styles:** Automatically optimizes prompts for different academic subjects.
+* **Custom AI Backend:** Powered by Cloudflare Workers AI for fast and reliable image generation.
 
 ---
 
-## 🚀 Deployment Guide (Streamlit Community Cloud)
+## 🏗️ Backend Architecture (Cloudflare Workers)
 
-To make this app accessible to students via a public URL:
+The app does not call third-party APIs directly. Instead, it communicates with a private **Cloudflare Worker** acting as a secure API Gateway.
+
+Link for worker deployment: dash.cloudflare.com
+Guideline: https://www.youtube.com/watch?v=VliEpQl06pE
+
+
+### Worker Code Logic:
+
+The backend is built with the following logic to handle requests and generate images using the `stable-diffusion-xl-base-1.0` model:
+
+```javascript
+export default {
+  async fetch(request, env) {
+      const API_KEY = env.API_KEY;
+      const url = new URL(request.url);
+      const auth = request.headers.get("Authorization");
+
+      // 🔐 Security: Bearer Token Check
+      if (auth !== `Bearer ${API_KEY}`) {
+          return json({ error: "Unauthorized" }, 401);
+      }
+
+      // 🚫 Method Validation
+      if (request.method !== "POST" || url.pathname !== "/") {
+          return json({ error: "Not allowed" }, 405);
+      }
+
+      try {
+          const { prompt } = await request.json();
+          if (!prompt) return json({ error: "Prompt is required" }, 400);
+
+          // 🧠 AI Generation using Stable Diffusion XL
+          const result = await env.AI.run(
+              "@cf/stabilityai/stable-diffusion-xl-base-1.0",
+              { prompt }
+          );
+
+          return new Response(result, {
+              headers: { "Content-Type": "image/jpeg" },
+          });
+      } catch (err) {
+          return json({ error: "Failed to generate image", details: err.message }, 500);
+      }
+  },
+};
+
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+      status,
+      headers: { "Content-Type": "application/json" },
+  });
+}
+
+```
+
+---
+
+## 🚀 App Deployment Guide (Streamlit Community Cloud)
 
 ### 1. GitHub Setup
 
-1. Create a **Public Repository** on GitHub.
-2. Upload the following files: `app.py`, `requirements.txt`, and `README.md`.
-3. **Note:** Do **not** upload the `.streamlit/` folder or `secrets.toml` to GitHub.
+1. Create a repository and upload: `app.py`, `requirements.txt`, and `README.md`.
+2. **Note:** Ensure your `requirements.txt` includes `deep-translator`.
 
 ### 2. Connect to Streamlit Cloud
 
-1. Go to [share.streamlit.io](https://share.streamlit.io) and sign in.
-2. Click **"Create app"** and point it to your GitHub repository.
-3. In **Advanced Settings**, add your default API key in the Secrets box:
+1. Sign in at [share.streamlit.io](https://share.streamlit.io).
+2. Deploy your repo and click **Advanced Settings**.
+3. In **Secrets**, add your Worker token:
 ```toml
-CLIPDROP_API_KEY = "50f2b15a199dc34afc59ac2b15515b93cda5a28ea269cbf597d3cdb3bca1242e35a9ff7782fe4e63782127626d78666a"
+API_KEY = "12345678"
 
+```
+4. Command to generate image:
+```
+curl -X POST https://image-api.hiep622032001.workers.dev \
+  -H "Authorization: Bearer 12345678" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "A cute appler cooking breakfast"}' \
+  --output image.jpg
 ```
 
 
 
-### 3. How to Update the App (Manual Reboot)
+### 3. Updating & Rebooting
 
-If you push new changes to GitHub (like adding a new library), you **must** manually reboot to avoid errors:
+If the app environment doesn't update after a code push:
 
-1. Open your deployed app URL.
-2. Click **"Manage app"** at the bottom right.
-3. Click the **three dots (⋮)** menu icon and select **"Reboot app"**. This forces a fresh installation of all libraries in `requirements.txt`.
-
----
-
-## 🛠️ Usage & API Keys
-
-The app comes with a pre-configured API key. If you reach the image limit (100 credits), follow these steps to get a new one for free:
-
-### How to get a new API Key:
-
-1. **Get a Temp Number:** Visit [Temp-Number.com](https://temp-number.com/) and pick a number (USA/UK work best).
-2. **Register at Clipdrop:** Go to [Clipdrop Cleanup API](https://clipdrop.co/apis/docs/cleanup) and sign up with a new email.
-3. **Verify:** Use the number from Step 1 to receive the SMS. Enter the code on Clipdrop.
-4. **Copy Key:** Copy the new API key from your dashboard.
-5. **Paste in Sidebar:** Paste it into the **"Clipdrop API Key"** field in the app sidebar.
+1. Click **"Manage app"** (bottom right).
+2. Click the **three dots (⋮)** menu.
+3. Select **"Reboot app"**.
 
 ---
 
-## 📚 Features for Students
+## 🛠️ Usage & Authentication
 
-* **Bilingual UI:** Toggle between English and Vietnamese.
-* **Subject Specificity:** Automatically applies styles for Math, Biology, Physics, etc.
-* **Session History:** Scroll back to see all generated images in the current session.
-* **Privacy:** API keys are masked as password fields for safe classroom use.
+The app uses a **Bearer Token** for security.
+
+* **Default Token:** `12345678`
+* If you have your own Cloudflare Worker deployment, enter your specific `API_KEY` in the sidebar input field.
+* Images typically take **~30 seconds** to generate.
 
 ---
 
 ## 🔧 Requirements
 
-To run locally or deploy, the following libraries are required:
-
 * Python 3.9+
 * `streamlit`
-* `deep-translator` (Required for Vietnamese support)
+* `deep-translator`
 
-**Installation:**
+**Local Execution:**
 
 ```bash
 pip install -r requirements.txt
@@ -86,9 +132,7 @@ streamlit run app.py
 
 ---
 
-### 📄 Your `requirements.txt` file content:
-
-Copy this into your `requirements.txt` file to ensure the deployment works:
+### 📄 requirements.txt content:
 
 ```text
 streamlit
@@ -96,4 +140,4 @@ deep-translator
 
 ```
 
-**Would you like me to help you add a "Download Image" button so students can save the generated diagrams to their computers?**
+**Would you like me to add a "Model Selector" to the sidebar so users can choose between different Cloudflare models like `dreamshaper` or `schnell`?**
