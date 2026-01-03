@@ -9,28 +9,17 @@ st.set_page_config(page_title="Student Image Lab", page_icon="🎓", layout="wid
 
 # 1. Sidebar Configuration
 with st.sidebar:
-    st.title("⚙️ App Settings")
-    
-    # User Input for API Key / Token
-    default_token = "12345678"
-    api_token = st.text_input(
-        "Worker Authorization Token", 
-        value=default_token, 
-        type="password",
-        help="Enter the Bearer Token for the image generation worker."
-    )
-    
-    st.divider()
+    st.title("📚 Study Room")
     
     # Language Selection
-    st.title("🌐 Language / Ngôn ngữ")
     lang_choice = st.selectbox(
-        "Select your language:",
+        "Select your language / Chọn ngôn ngữ:",
         ["English", "Tiếng Việt"]
     )
     
     st.divider()
-    st.title("📚 Study Room")
+    
+    # Subject Selection
     subject = st.selectbox(
         "What are we studying?",
         ["General", "Math", "Literature", "Geography", "Physics", "Biology", "History"]
@@ -71,7 +60,8 @@ if raw_prompt := st.chat_input(input_label):
         st.markdown(raw_prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner("Generating image (this takes ~30s)..." if lang_choice == "English" else "Đang tạo hình ảnh (mất khoảng 30 giây)..."):
+        loading_text = "Generating image (this takes ~30s)..." if lang_choice == "English" else "Đang tạo hình ảnh (mất khoảng 30 giây)..."
+        with st.spinner(loading_text):
             try:
                 # STEP A: Handle Translation
                 if lang_choice == "Tiếng Việt":
@@ -83,15 +73,16 @@ if raw_prompt := st.chat_input(input_label):
                 # STEP B: Apply modifiers
                 enhanced_prompt = f"{subject_modifiers[subject]}{english_prompt}"
 
-                # STEP C: Call New Worker API
+                # STEP C: Call Cloudflare Worker API (Token is now completely hidden)
                 url = "https://image-api.hiep622032001.workers.dev"
+                api_token = "12345678"  # Hardcoded hidden token
+                
                 headers = {
                     "Authorization": f"Bearer {api_token}",
                     "Content-Type": "application/json"
                 }
                 payload = {"prompt": enhanced_prompt}
 
-                # Using a 60s timeout since generation takes 30s
                 response = requests.post(url, headers=headers, json=payload, timeout=60)
 
                 if response.ok:
@@ -103,11 +94,11 @@ if raw_prompt := st.chat_input(input_label):
                         "content": img
                     })
                 elif response.status_code == 401:
-                    st.error("Unauthorized: Please check your Bearer Token.")
+                    st.error("Authentication Error: The internal token is incorrect.")
                 else:
-                    st.error(f"Error {response.status_code}: {response.text}")
+                    st.error(f"Error {response.status_code}")
 
             except requests.exceptions.Timeout:
-                st.error("The request timed out. The server took too long to respond.")
+                st.error("The AI Worker took too long. Please try a simpler prompt.")
             except Exception as e:
                 st.error(f"Error: {e}")
